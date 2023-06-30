@@ -38,6 +38,9 @@ class CoordWindow(QWidget):
             local_pos = global_pos - screen_pos
             self._label.setText(f"Mouse coordinates: ({local_pos.x()}, {local_pos.y()})")
 
+            if self.screen() != screen:
+                window.move(screen_pos)
+
             if self._timer.interval != self._long_interval and self._last_screen_pos is not None and self._last_screen_pos == local_pos:
                 self._no_move_count += 1
             elif self._timer.interval() != self._short_interval:
