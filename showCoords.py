@@ -60,7 +60,7 @@ class CoordWindow(QWidget):
             if self._timer.interval() != self._short_interval:
                 self._timer.setInterval(self._short_interval)
             self._no_move_count = 0
-            self._label.setText(f"Mouse coordinates: ({local_pos.x()}, {local_pos.y()})")
+            self._label.setText(f"Global ({global_pos.x()}, {global_pos.y()})\nScreen ({local_pos.x()}, {local_pos.y()})")
 
             if self.screen() != screen:
                 window.move(screen_pos)
