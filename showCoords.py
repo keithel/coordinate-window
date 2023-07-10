@@ -1,8 +1,11 @@
 import sys
 import signal
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QLoggingCategory, QtMsgType
 from PySide6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
 from PySide6.QtGui import QGuiApplication, QCursor
+
+
+lc = QLoggingCategory("showCoords", QtMsgType.QtWarningMsg)
 
 
 class CoordWindow(QWidget):
@@ -11,6 +14,7 @@ class CoordWindow(QWidget):
 
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setMouseTracking(True)
 
         self._layout = QVBoxLayout(self)
         self.setLayout(self._layout)
@@ -18,6 +22,7 @@ class CoordWindow(QWidget):
         self._label = QLabel(self)
         self._label.setStyleSheet("QLabel { color: white; font: bold 16px; }")
         self._layout.addWidget(self._label)
+        self._label.setMouseTracking(True)
 
         self._long_interval = 1000
         self._short_interval = 16
@@ -33,30 +38,38 @@ class CoordWindow(QWidget):
     def _updateCoordinates(self):
         global_pos = QCursor.pos()
         screen = QGuiApplication.screenAt(global_pos)
-        if screen:
-            screen_pos = screen.geometry().topLeft()
-            local_pos = global_pos - screen_pos
+        if screen is None:
+            return
+
+        screen_pos = screen.geometry().topLeft()
+        local_pos = global_pos - screen_pos
+        if self._last_screen_pos == local_pos:
+            if lc.isDebugEnabled():
+                print(".", end="")
+                sys.stdout.flush()
+            if self._timer.interval != self._long_interval:
+                self._no_move_count += 1
+            if self._no_move_count > self._long_interval / self._short_interval:
+                self._timer.setInterval(self._long_interval)
+        else:
+            if lc.isDebugEnabled():
+                backspaces = "\b" * (self._no_move_count)
+                spaces = " " * (self._no_move_count)
+                print(backspaces + spaces + backspaces, end="")
+                sys.stdout.flush()
+            if self._timer.interval() != self._short_interval:
+                self._timer.setInterval(self._short_interval)
+            self._no_move_count = 0
             self._label.setText(f"Mouse coordinates: ({local_pos.x()}, {local_pos.y()})")
 
             if self.screen() != screen:
                 window.move(screen_pos)
 
-            if self._timer.interval != self._long_interval and self._last_screen_pos is not None and self._last_screen_pos == local_pos:
-                self._no_move_count += 1
-            elif self._timer.interval() != self._short_interval:
-                self._timer.setInterval(self._short_interval)
-            else:
-                self._no_move_count = 0
-
-            if self._no_move_count > self._long_interval / self._short_interval:
-                self._no_move_count = 0
-                self._timer.setInterval(self._long_interval)
-
-            self._last_screen_pos = local_pos
+        self._last_screen_pos = local_pos
 
 
 def sigint_handler(signal, frame):
-    sys.exit(1)
+    qApp.exit(1)
 
 
 if __name__ == "__main__":
